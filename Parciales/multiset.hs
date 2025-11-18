@@ -45,21 +45,99 @@ filterMSE f (MapMS h ms)      = MapMS h (filterMSE (f . h) ms) --mismo criterio 
 
 
 --c)
-{-
-Version costosa, podria intentar con una estructura [(k,v)] 
-e ir acumulando occurs y ver si alguno quedo negativo
--}
 isValidMSE :: MSExp a -> Bool
 isValidMSE EmptyMS           = True
-isValidMSE (RemoveMS x ms)   = 1 + cantRemoveMS x ms < cantAddMS x ms
+isValidMSE (RemoveMS x ms)   = occursMSE x ms > 0 && isValidMSE ms
 isValidMSE (AddMS x ms)      = isValidMSE ms
 isValidMSE (UnionMS ms1 ms3) = isValidMSE ms1 && isValidMSE ms2
--- isValidMSE (MapMS f ms)      = isValidMSE ()
+isValidMSE (MapMS f ms)      = isValidMSE ms
 
-cantRemoveMS :: Eq a => a -> MSExp a -> Int
-cantRemoveMS _  EmptyMS          = 0
-cantRemoveMS x (RemoveMS y ms)   = bool2Int (x==y) + cantRemoveMS x ms
-cantRemoveMS x (AddMS _ ms)      = cantRemoveMS x ms
-cantRemoveMS x (UnionMS ms1 ms2) = cantRemoveMS x ms1 + cantRemoveMS x ms2
-cantRemoveMS x ()
+--d)
+evalMSE :: Eq a => MSExp a -> [a]
+evalMSE EmptyMS             = []
+evalMSE (RemoveMS x ms)     = remove x (evalMSE ms) 
+evalMSE (AddMS x ms)        = x : evalMSE ms
+evalMSE (UnionMS ms1 ms2)   = evalMSE ++ evalMSE ms2
+evalMSE (MapMS f ms)        = map f (evalMSE ms)
 
+--e)
+simpMSE :: MSExp a -> MSExp a
+simpMSE EmptyMS             = EmptyMS
+simpMSE (AddMS x ms)        = AddMS x (simpMSE ms)
+simpMSE (UnionMS ms1 ms2)   = case (ms1, ms2) of
+                                    (EmptyMS, ms) -> simpMSE ms
+                                    (ms, EmptyMS) -> simpMSE ms
+simpMSE (MapMS f ms)        = simpMap f (simpMSE ms)
+simpMSE (RemoveMS x ms)     = simpRemove x (simpMSE ms)
+
+simpRemove :: Eq a => a -> MSExp a -> MSExp a
+simpRemove x (AddMS y ms) = if x==y then ms else RemoveMS x (AddMS y ms)
+simpRemove x ms           = ms
+
+simpMap :: (a -> a) -> MSExp a -> MSExp a
+simpMap f EmptyMS = EmptyMS
+simpMap f ms      = MapMS f ms
+
+--Ejercicio 2)
+{-
+Para todo ms, 
+    ¿ evalMSE . simpMSE ms = evalMSE ?
+
+    Sea ms::MSExp cualquiera, 
+
+    Caso base, ms = EmptyMS
+        ¿ evalMSE . simpMSE EmptyMS = evalMSE EmptyMS ?
+
+    Caso inductivo 1, ms = AddMS x ms
+        HI.1) evalMSE . simpMSE ms = evalMSE ms
+        ¿ evalMSE . simpMSE (AddMS x ms) = evalMSE (AddMS x ms) ?
+
+    Caso inductivo 2, ms = RemoveMS x ms
+        HI.1) evalMSE . simpMSE ms = evalMSE ms
+        ¿ evalMSE . simpMSE (RemoveMS x ms) = evalMSE (RemoveMS x ms) ?
+
+    Caso inductivo 3, ms = UnionMS ms1 ms2
+        HI.1) evalMSE . simpMSE ms1 = evalMSE ms1
+        HI.2) evalMSE . simpMSE ms2 = evalMSE ms2
+        ¿ evalMSE . simpMSE (UnionMS ms1 ms2) = evalMSE (UnionMS ms1 ms2) ?
+
+    Caso inductivo 3, ms = MapMS f ms
+        HI.1) evalMSE . simpMSE ms = evalMSE ms
+        ¿ evalMSE . simpMSE (MapMS f ms) = evalMSE (MapMS f ms) ?
+
+    Caso base:
+    --lado izq
+    evalMSE . simpMSE EmptyMS
+    = (def. (.))
+    evalMSE (simpMSE EmptyMS)
+    = (def. simpMSE.1)
+    evalMSE EmptyMS
+    = (def. evalMSE.1)
+    []
+
+    --lado der
+    evalMSE EmptyMS
+    = (def. evalMSE.1)
+    []
+
+    Caso inductivo 1:
+    --lado izq
+    evalMSE . simpMSE (AddMS x ms)
+    = (def. (.))
+    evalMSE (simpMSE (AddMS x ms))
+    = (def. simpMSE.2)
+    evalMSE (AddMS x (simpMSE ms))
+    = (def. evalMSE.3)
+    x : (evalMSE (simpMSE ms))
+    = (por HI)
+    x : (evalMSE ms)
+
+    --lado der
+    evalMSE (AddMS x ms)
+    = (def. evalMSE.3)
+    x : (evalMSE ms)
+
+    [Faltan casos inductivos 2 y 3 (utilizan lemas)]
+-}
+
+--Ejercicio 3)

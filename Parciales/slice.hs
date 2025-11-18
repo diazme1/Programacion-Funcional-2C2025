@@ -19,17 +19,11 @@ materialize (Base xs)     = xs
 materialize (Take n sexp) = takeN n (materialize sexp)
 materialize (Drop n sexp) = dropN n (materialize sexp)
 
--- takeN :: Int -> [a] -> [a]
--- takeN n []     = []  
--- takeN n (x:xs) = if n>0 then x: takeN (n-1) xs 
---                         else []
-
 takeN :: Int -> [a] -> [a]
 takeN _ []     = []  
 takeN 0 _      = []
 takeN n (x:xs) =  x: takeN (n-1) xs 
                  
-
 dropN :: Int -> [a] -> [a]
 dropN 0 xs     = xs
 dropN n []     = []  
@@ -78,9 +72,19 @@ takeSExp n (Take m sexp) = Take m (takeSExp n sexp)
 -- EJERCICIO 2 
 -- Demostrar: lenS . normalize = lenS
 
+{-
+Para todo sexp, 
+        ¿ lenS . normalize sexp = lenS sexp ?
+-}
+
 
 -- EJERCICIO 3
 -- Definir el esquema primitivo y recursivo de SliceExp a. 
+
+foldS :: ([a] -> b) -> (Int -> b -> b) -> SliceExp a -> b
+foldS fb fr (Base xs)     = fb xs
+foldS fb fr (Take n sexp) = fr n (foldS fb fr sexp)
+foldS fb fr (Drop n sexp) = fr n (foldS fb fr sexp)
 
 
 -- EJERCICIO 4
